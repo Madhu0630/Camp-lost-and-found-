@@ -1,0 +1,92 @@
+import streamlit as st
+
+st.set_page_config(
+    page_title="CampusConnect",
+    page_icon="🎓",
+    layout="wide"
+)
+
+st.title("🎓 CampusConnect")
+st.subheader("Smart Campus Lost & Found Management System")
+
+st.write(
+    "A simple platform to report and search for "
+    "lost and found items on campus."
+)
+
+if "items" not in st.session_state:
+    st.session_state.items = []
+
+menu = st.sidebar.selectbox(
+    "Choose an Option",
+    ["Home", "Report Lost Item", "Report Found Item", "Search Items"]
+)
+
+if menu == "Home":
+    st.header("Welcome to CampusConnect!")
+    st.write("Help your campus community find lost belongings.")
+
+    col1, col2 = st.columns(2)
+    col1.metric(
+        "Lost Items",
+        sum(i["status"] == "Lost" for i in st.session_state.items)
+    )
+    col2.metric(
+        "Found Items",
+        sum(i["status"] == "Found" for i in st.session_state.items)
+    )
+
+elif menu in ["Report Lost Item", "Report Found Item"]:
+    status = "Lost" if menu == "Report Lost Item" else "Found"
+    st.header(menu)
+
+    with st.form("item_form"):
+        name = st.text_input("Item Name")
+        category = st.selectbox(
+            "Category",
+            ["ID Card", "Books", "Electronics", "Bags", "Keys", "Other"]
+        )
+        location = st.text_input("Location")
+        description = st.text_area("Description")
+
+        submitted = st.form_submit_button("Submit Report")
+
+    if submitted:
+        if name.strip() and location.strip():
+            st.session_state.items.append({
+                "name": name.strip(),
+                "category": category,
+                "location": location.strip(),
+                "description": description.strip(),
+                "status": status
+            })
+            st.success(f"{status} item reported successfully!")
+        else:
+            st.warning("Please enter the item name and location.")
+
+elif menu == "Search Items":
+    st.header("🔍 Search Lost & Found Items")
+
+    keyword = st.text_input("Search by item name or location")
+
+    matches = [
+        item for item in st.session_state.items
+        if keyword.lower() in item["name"].lower()
+        or keyword.lower() in item["location"].lower()
+    ]
+
+    if not keyword:
+        matches = st.session_state.items
+
+    if matches:
+        for item in matches:
+            with st.container(border=True):
+                st.write(f"**Item:** {item['name']}")
+                st.write(f"**Status:** {item['status']}")
+                st.write(f"**Category:** {item['category']}")
+                st.write(f"**Location:** {item['location']}")
+                st.write(f"**Description:** {item['description']}")
+    else:
+        st.info("No matching items found.")
+
+st.sidebar.caption("CampusConnect | Student Mini Project")
