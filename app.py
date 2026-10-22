@@ -16,6 +16,9 @@ st.set_page_config(
 if "user" not in st.session_state:
     st.session_state.user = None
 
+if "guest_mode" not in st.session_state:
+    st.session_state.guest_mode = False
+
 # Custom Styling
 st.markdown("""
 <style>
@@ -34,12 +37,12 @@ st.markdown("""
         margin-bottom: 15px;
         font-size: 0.9em;
     }
-    .delete-card {
-        border: 1px solid #ffcdd2;
-        background-color: #ffebee;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 15px;
+    .login-box {
+        background-color: #ffffff;
+        padding: 24px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -55,11 +58,98 @@ CATEGORIES = [
     "Other"
 ]
 
+# =====================================================================
+# 🔐 GATEWAY: IF NOT LOGGED IN, OPEN DIRECTLY TO THE LOGIN PAGE FIRST!
+# =====================================================================
+if not st.session_state.user and not st.session_state.guest_mode:
+    st.sidebar.title("🎓 CampusConnect")
+    st.sidebar.info("👋 Welcome! Please log in to access the campus portal.")
+    st.sidebar.divider()
+    st.sidebar.markdown("""
+    **Demo Credentials:**
+    * **Student:** `student` / `student123`
+    * **Admin:** `admin` / `admin123`
+    """)
+
+    # Main Area: Clean Login Portal
+    col_left, col_mid, col_right = st.columns([1, 2.5, 1])
+
+    with col_mid:
+        st.title("🎓 CampusConnect")
+        st.subheader("Smart Campus Lost & Found System")
+        st.write("Sign in with your campus account to report, search, and manage lost or found belongings.")
+
+        tab_login, tab_register = st.tabs(["🔐 Sign In", "📝 Create New Account"])
+
+        # TAB 1: LOGIN
+        with tab_login:
+            with st.form("main_login_form"):
+                login_user = st.text_input("Username or Campus Email", placeholder="e.g. student or student@campus.edu")
+                login_pass = st.text_input("Password", type="password", placeholder="Enter your password")
+                login_btn = st.form_submit_button("Sign In to Portal", use_container_width=True, type="primary")
+
+            if login_btn:
+                if not login_user or not login_pass:
+                    st.error("Please enter both username/email and password.")
+                else:
+                    user_data = db.authenticate_user(login_user, login_pass)
+                    if user_data:
+                        st.session_state.user = user_data
+                        st.session_state.guest_mode = False
+                        st.success(f"Welcome back, {user_data['username']}! Logging in...")
+                        st.rerun()
+                    else:
+                        st.error("Invalid username/email or password.")
+
+            st.divider()
+            st.markdown("#### ⚡ 1-Click Quick Demo Sign In")
+            c_demo1, c_demo2 = st.columns(2)
+            with c_demo1:
+                if st.button("🎓 Sign In as Student", use_container_width=True):
+                    user_data = db.authenticate_user("student", "student123")
+                    st.session_state.user = user_data
+                    st.rerun()
+            with c_demo2:
+                if st.button("👑 Sign In as Admin", use_container_width=True):
+                    user_data = db.authenticate_user("admin", "admin123")
+                    st.session_state.user = user_data
+                    st.rerun()
+
+            st.divider()
+            if st.button("👀 Continue as Guest (Search Only)", use_container_width=True):
+                st.session_state.guest_mode = True
+                st.rerun()
+
+        # TAB 2: REGISTER
+        with tab_register:
+            st.subheader("Register New Student/Staff Account")
+            with st.form("main_register_form", clear_on_submit=True):
+                new_user = st.text_input("Desired Username *", placeholder="e.g. priya_sharma")
+                new_email = st.text_input("Campus Email *", placeholder="e.g. priya@campus.edu")
+                new_pass = st.text_input("Password (min 6 chars) *", type="password")
+                role_choice = st.selectbox("Account Role", ["student", "admin"])
+                register_btn = st.form_submit_button("Register Account", use_container_width=True, type="primary")
+
+            if register_btn:
+                success, msg = db.register_user(new_user, new_email, new_pass, role=role_choice)
+                if success:
+                    st.success(msg)
+                    st.info("You can now switch to the 'Sign In' tab above to log in.")
+                else:
+                    st.error(msg)
+
+    # Stop rendering the rest of the application until the user logs in
+    st.stop()
+
+
+# =====================================================================
+# 🌟 MAIN APPLICATION (UNLOCKED AFTER LOGIN / GUEST ACCESS)
+# =====================================================================
+
 # ----------------- SIDEBAR -----------------
 st.sidebar.title("🎓 CampusConnect")
 st.sidebar.markdown("**Smart Campus Lost & Found**")
 
-# User status in sidebar
 if st.session_state.user:
     role_icon = "👑" if st.session_state.user["role"] == "admin" else "🎓"
     st.sidebar.markdown(f"""
@@ -71,36 +161,40 @@ if st.session_state.user:
 
     if st.sidebar.button("🚪 Log Out", use_container_width=True):
         st.session_state.user = None
-        st.sidebar.success("Logged out successfully.")
+        st.session_state.guest_mode = False
         st.rerun()
 else:
-    st.sidebar.info("👤 Browsing as **Guest**.\nLog in to manage or delete reports.")
+    st.sidebar.info("👤 Browsing as **Guest** (Read Only).")
+    if st.sidebar.button("🔐 Go to Login Screen", use_container_width=True):
+        st.session_state.guest_mode = False
+        st.session_state.user = None
+        st.rerun()
 
 st.sidebar.divider()
 
 nav_options = [
-    "🏠 Home",
+    "🏠 Dashboard",
     "📢 Report Lost Item",
     "🎁 Report Found Item",
     "🔍 Search & Browse",
     "🗑️ Manage & Delete Reports",
-    "🔑 Account / Login",
+    "👤 My Profile",
     "ℹ️ Help & Guidelines"
 ]
 
 menu = st.sidebar.radio("Navigation", nav_options)
 
 st.sidebar.divider()
-st.sidebar.caption("CampusConnect v2.1 • Student Mini Project")
-st.sidebar.caption("SQLite Persistent Storage • User Auth Enabled")
+st.sidebar.caption("CampusConnect v2.2 • Student Mini Project")
+st.sidebar.caption("SQLite Persistent Storage • User Auth Active")
 
 
-# ----------------- 🏠 HOME -----------------
-if menu == "🏠 Home":
-    st.title("🎓 Campus Lost & Found Portal")
+# ----------------- 🏠 DASHBOARD -----------------
+if menu == "🏠 Dashboard":
+    st.title("🎓 Campus Lost & Found Dashboard")
     st.write(
-        "Welcome to **CampusConnect**, a centralized digital portal for students, staff, and campus security "
-        "to report, search, and reclaim lost belongings across campus."
+        "Welcome to **CampusConnect**, a centralized portal for students and staff to "
+        "report, discover, and recover lost belongings across the campus."
     )
 
     stats = db.get_stats()
@@ -122,11 +216,11 @@ if menu == "🏠 Home":
         st.markdown("### 1. Report It")
         st.write("Lost an item or found someone's belonging? Submit details and location in seconds.")
     with step2:
-        st.markdown("### 2. Search & Filter")
+        st.markdown("### 2. Search & Connect")
         st.write("Browse listings with real-time keyword and category filters to locate matches.")
     with step3:
-        st.markdown("### 3. Reclaim & Delete")
-        st.write("Contact the reporter or security desk. Once returned, mark as resolved or delete the report.")
+        st.markdown("### 3. Reclaim Safely")
+        st.write("Contact the reporter or security desk. Once returned, mark as resolved or delete.")
 
     st.divider()
     st.subheader("🕒 Recent Submissions")
@@ -170,7 +264,7 @@ elif menu == "📢 Report Lost Item":
             placeholder="Mention color, brand, stickers, serial numbers, scratches, or any unique identifiers."
         )
 
-        submitted = st.form_submit_button("Submit Lost Report", use_container_width=True)
+        submitted = st.form_submit_button("Submit Lost Report", use_container_width=True, type="primary")
 
     if submitted:
         if not name.strip() or not location.strip() or not contact_info.strip():
@@ -188,7 +282,7 @@ elif menu == "📢 Report Lost Item":
                 username=current_username
             )
             st.success(f"Lost item report registered successfully! (Reference ID: #{item_id})")
-            st.info("You can track and manage this report under the '🗑️ Manage & Delete Reports' tab.")
+            st.info("You can track and manage this report under '🗑️ Manage & Delete Reports'.")
 
 
 # ------------- 🎁 REPORT FOUND ITEM -------------
@@ -216,7 +310,7 @@ elif menu == "🎁 Report Found Item":
             placeholder="Describe the item condition, markings, or where the owner can verify ownership."
         )
 
-        submitted = st.form_submit_button("Submit Found Report", use_container_width=True)
+        submitted = st.form_submit_button("Submit Found Report", use_container_width=True, type="primary")
 
     if submitted:
         if not name.strip() or not location.strip() or not contact_info.strip():
@@ -287,21 +381,19 @@ elif menu == "🔍 Search & Browse":
         st.info("No matching items found. Try adjusting your search query or filters.")
 
 
-# ------------- 🗑️ MANAGE & DELETE REPORTS (REQUESTED FEATURE) -------------
+# ------------- 🗑️ MANAGE & DELETE REPORTS -------------
 elif menu == "🗑️ Manage & Delete Reports":
     st.title("🗑️ Manage & Delete Reports")
     st.write("Manage active listings, toggle resolution status, or permanently delete reports.")
 
-    # Permissions check
     is_admin = st.session_state.user and st.session_state.user["role"] == "admin"
     current_username = st.session_state.user["username"] if st.session_state.user else None
 
     if not st.session_state.user:
-        st.warning("⚠️ You are browsing as a Guest. Log in under **'🔑 Account / Login'** to view and delete your personal reports, or manage them as an Administrator.")
+        st.warning("⚠️ You are browsing as a Guest. Log in to manage or delete your reports, or log in as an Admin.")
         items_to_manage = db.get_items()
-        st.info("Displaying all public reports in read-only / guest mode. Log in as an admin (`admin`/`admin123`) to delete any post.")
     elif is_admin:
-        st.success(f"👑 **Admin Mode Activated** (Logged in as `@{current_username}`). You have permission to manage and delete **any** campus report.")
+        st.success(f"👑 **Admin Mode Activated** (Logged in as `@{current_username}`). You can manage and delete **any** report.")
         items_to_manage = db.get_items()
     else:
         st.info(f"🎓 Showing reports submitted by **`@{current_username}`**.")
@@ -326,7 +418,6 @@ elif menu == "🗑️ Manage & Delete Reports":
                     current_status = it["status"]
                     st.write(f"Current Status: **{current_status}**")
 
-                    # Change status button
                     if current_status == "Open":
                         if st.button("Mark Resolved ✅", key=f"res_{it['id']}"):
                             db.update_item_status(it["id"], "Resolved")
@@ -338,7 +429,6 @@ elif menu == "🗑️ Manage & Delete Reports":
                             st.success(f"Item #{it['id']} re-opened!")
                             st.rerun()
 
-                    # Delete action (Admin or Owner)
                     can_delete = is_admin or (current_username and it.get("username") == current_username)
                     if can_delete:
                         st.divider()
@@ -354,22 +444,20 @@ elif menu == "🗑️ Manage & Delete Reports":
         st.write("No reports available to manage.")
 
 
-# ------------- 🔑 ACCOUNT / LOGIN / LOGOUT -------------
-elif menu == "🔑 Account / Login":
+# ------------- 👤 MY PROFILE -------------
+elif menu == "👤 My Profile":
+    st.title("👤 My Account Profile")
     if st.session_state.user:
-        st.title("👤 My Account Profile")
         u = st.session_state.user
-
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
-            ### Welcome back, **{u['username'].capitalize()}**!
+            ### Welcome, **{u['username'].capitalize()}**!
             * **Username:** `{u['username']}`
             * **Email:** `{u['email']}`
             * **Role:** `{u['role'].capitalize()}`
             """)
 
-            # User's activity statistics
             user_stats = db.get_stats(username=u['username'])
             m1, m2, m3 = st.columns(3)
             with m1:
@@ -383,59 +471,14 @@ elif menu == "🔑 Account / Login":
             st.markdown("### Session Actions")
             if st.button("🚪 Logout of Account", type="primary", use_container_width=True):
                 st.session_state.user = None
-                st.success("You have been logged out.")
+                st.session_state.guest_mode = False
                 st.rerun()
-
     else:
-        st.title("🔑 Student & Staff Authentication")
-        st.write("Log in to report items with your identity and manage or delete your listings.")
-
-        tab_login, tab_register = st.tabs(["🔐 Login", "📝 Create New Account"])
-
-        # LOGIN TAB
-        with tab_login:
-            st.subheader("Login to CampusConnect")
-            with st.form("login_form"):
-                login_user = st.text_input("Username or Email", placeholder="e.g. student or student@campus.edu")
-                login_pass = st.text_input("Password", type="password", placeholder="Enter your password")
-                login_btn = st.form_submit_button("Sign In", use_container_width=True)
-
-            if login_btn:
-                if not login_user or not login_pass:
-                    st.error("Please enter both username/email and password.")
-                else:
-                    user_data = db.authenticate_user(login_user, login_pass)
-                    if user_data:
-                        st.session_state.user = user_data
-                        st.success(f"Welcome, {user_data['username']}! Logged in successfully.")
-                        st.rerun()
-                    else:
-                        st.error("Invalid username/email or password.")
-
-            st.divider()
-            st.markdown("""
-            **💡 Demo Credentials for Testing:**
-            * **Admin Account:** Username: `admin` | Password: `admin123` *(Has full access to delete any item)*
-            * **Student Account:** Username: `student` | Password: `student123` *(Manages own items)*
-            """)
-
-        # REGISTER TAB
-        with tab_register:
-            st.subheader("Create a New Campus Account")
-            with st.form("register_form", clear_on_submit=True):
-                new_user = st.text_input("Desired Username", placeholder="e.g. priya_sharma")
-                new_email = st.text_input("Campus Email", placeholder="e.g. priya@campus.edu")
-                new_pass = st.text_input("Password (min 6 characters)", type="password")
-                role_choice = st.selectbox("Role", ["student", "admin"])
-                register_btn = st.form_submit_button("Create Account", use_container_width=True)
-
-            if register_btn:
-                success, msg = db.register_user(new_user, new_email, new_pass, role=role_choice)
-                if success:
-                    st.success(msg)
-                    st.info("You can now switch to the '🔐 Login' tab to sign in.")
-                else:
-                    st.error(msg)
+        st.info("You are currently browsing as a Guest.")
+        if st.button("🔐 Go to Login Page", type="primary"):
+            st.session_state.guest_mode = False
+            st.session_state.user = None
+            st.rerun()
 
 
 # ------------- ℹ️ HELP & GUIDELINES -------------
