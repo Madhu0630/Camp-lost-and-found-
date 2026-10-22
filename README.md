@@ -1,6 +1,6 @@
 # 🎓 CampusConnect: Smart Campus Lost & Found Management System
 
-A web-based platform built with **Python**, **Streamlit**, and **SQLite** to report, track, search, and reclaim lost and found belongings across a university or college campus.
+A full-featured web-based portal built with **Python**, **Streamlit**, and **SQLite** to report, track, search, manage, and reclaim lost and found belongings across a university or college campus.
 
 ---
 
@@ -31,13 +31,31 @@ A web-based platform built with **Python**, **Streamlit**, and **SQLite** to rep
 
 ## ✨ Features
 
-- **🏠 Interactive Dashboard:** Real-time statistics on total reports, active lost items, active found items, and resolved cases.
-- **📢 Report Lost Items:** Log lost item name, category, location, date lost, contact information, and detailed descriptions.
-- **🎁 Report Found Items:** Log found items, where they were discovered, and where they have been deposited (e.g. Security Desk, Library Reception).
+- **🏠 Interactive Dashboard:** Real-time metrics on total reports, active lost items, active found items, and resolved cases.
+- **🔐 User Authentication (Login & Logout):**
+  - Secure registration and login with SHA-256 salted password hashing.
+  - Role-based permissions (**Student** and **Admin**).
+  - Quick 1-click logout directly from the sidebar.
+- **📢 Report Lost Items:** Log lost item name, category, location, date lost, contact information, and detailed descriptions linked to the reporter's profile.
+- **🎁 Report Found Items:** Log found items, where they were discovered, and where they have been safely deposited (e.g. Security Desk, Library Reception).
 - **🔍 Filter & Search Engine:** Live keyword search across names, descriptions, and locations, with filters by Type (Lost/Found), Category, and Status.
-- **✅ Claim & Resolve Workflow:** Ability to mark items as resolved/claimed once returned to their owner.
-- **🛡️ Help & Guidelines:** Campus directory, security contacts, and safety advice for recovering lost items.
-- **💾 Persistent SQLite Database:** Retains all data automatically across app restarts.
+- **🗑️ Dedicated Manage & Delete Page:**
+  - View personal reports (or all reports if logged in as Admin).
+  - Toggle status between *Open* and *Resolved*.
+  - Permanent report deletion with confirmation check.
+- **🛡️ Help & Guidelines:** Campus directory, emergency security contacts, and safety advice for recovering lost items.
+- **💾 Persistent SQLite Database:** Retains all users and items automatically across app restarts.
+
+---
+
+## 🔑 Demo Credentials
+
+| Role | Username | Password | Permissions |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin` | `admin123` | Full access to manage and delete **any** campus report |
+| **Student** | `student` | `student123` | Submit reports, edit status, and delete **own** reports |
+
+*(You can also register any new student or admin account directly from the **"🔑 Account / Login"** tab).*
 
 ---
 
@@ -56,7 +74,14 @@ This script will automatically:
 
 ---
 
-### Option 2: Run via Terminal / PowerShell
+### Option 2: Run in VS Code
+1. Open VS Code.
+2. Click **File > Open Folder** and select `camp-lost-and-found`.
+3. Press **`F5`** (or open the terminal with ``Ctrl + ` `` and type `run.bat` or `.venv\Scripts\streamlit run app.py`).
+
+---
+
+### Option 3: Run via Terminal / PowerShell
 
 1. Open PowerShell or Command Prompt in the project folder:
    ```powershell
@@ -92,12 +117,13 @@ This script will automatically:
 ```text
 camp-lost-and-found/
 │
-├── app.py                  # Main Streamlit web application
-├── database.py             # SQLite database layer & helper functions
+├── app.py                  # Main Streamlit web application (UI, Auth & Routing)
+├── database.py             # SQLite database layer, user auth & item queries
 ├── requirements.txt        # Python package dependencies
 ├── run.bat                 # 1-click Windows runner script
 ├── run.ps1                 # PowerShell runner script
 ├── .gitignore              # Git ignore rules for Python, DB, and venv
-├── README.md               # Project documentation and guide
+├── .vscode/                # VS Code launch & settings configurations
+├── README.md               # Complete project documentation and guide
 └── campus_lost_found.db    # Auto-created SQLite database (created on first run)
 ```
